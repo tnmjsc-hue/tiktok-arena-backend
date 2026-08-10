@@ -3,9 +3,21 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 
-// Import an toàn tương thích mọi cách export của phiên bản tiktok-live-connector mới nhất
+// Import thư viện TikTok Live
 const TikTokLive = require('tiktok-live-connector');
-const WebcastPushConnection = TikTokLive.WebcastPushConnection || (TikTokLive.default ? TikTokLive.default.WebcastPushConnection : null) || TikTokLive.default || TikTokLive;
+
+// Hàm bổ trợ trích xuất đúng WebcastPushConnection Class từ mọi kiểu Export (CJS/ESM)
+function getWebcastPushConnection() {
+    if (typeof TikTokLive === 'function') return TikTokLive;
+    if (TikTokLive.WebcastPushConnection) return TikTokLive.WebcastPushConnection;
+    if (TikTokLive.default) {
+        if (typeof TikTokLive.default === 'function') return TikTokLive.default;
+        if (TikTokLive.default.WebcastPushConnection) return TikTokLive.default.WebcastPushConnection;
+    }
+    return TikTokLive;
+}
+
+const WebcastPushConnection = getWebcastPushConnection();
 
 const app = express();
 app.use(cors());
@@ -39,7 +51,12 @@ app.post('/api/connect-tiktok', (req, res) => {
     }
 
     try {
-        // Khởi tạo kết nối tới TikTok với cấu hình tự động bypass sign request
+        // Kiểm tra an toàn trước khi khởi tạo
+        if (typeof WebcastPushConnection !== 'function') {
+            throw new Error("Không thể nạp WebcastPushConnection class từ thư viện tiktok-live-connector");
+        }
+
+        // Khởi tạo kết nối tới TikTok
         tiktokConnection = new WebcastPushConnection(username, {
             processInitialData: false,
             enableExtendedGiftInfo: true,
@@ -116,8 +133,8 @@ app.post('/api/connect-tiktok', (req, res) => {
         });
 
     } catch (err) {
-        console.error('[Init Error]:', err);
-        res.status(500).json({ error: "Lỗi khởi tạo thư viện TikTok" });
+        console.error('[Init Error]:', err.message || err);
+        res.status(500).json({ error: "Lỗi khởi tạo thư viện TikTok: " + err.message });
     }
 });
 
