@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const { resolveTikTokUsername } = require('./tiktok-input');
 
 // Import WebcastPushConnection từ tiktok-live-connector v2
 const { WebcastPushConnection } = require('tiktok-live-connector/legacy');
@@ -27,10 +28,14 @@ const io = new Server(server, {
 let tiktokConnection = null;
 
 // API kết nối phòng TikTok Live
-app.post('/api/connect-tiktok', (req, res) => {
-    const { username } = req.body;
-    if (!username) {
-        return res.status(400).json({ error: "Vui lòng nhập TikTok Username" });
+app.post('/api/connect-tiktok', async (req, res) => {
+    let username;
+    try {
+        username = await resolveTikTokUsername(req.body.username);
+        console.log(`[TikTok] Đã xác định Username: @${username}`);
+    } catch (err) {
+        const message = (err && err.message) ? err.message : 'Link TikTok không hợp lệ';
+        return res.status(400).json({ error: message });
     }
 
     if (tiktokConnection) {
