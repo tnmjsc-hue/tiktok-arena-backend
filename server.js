@@ -3,15 +3,15 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 
-// Import an toàn tương thích mọi phiên bản tiktok-live-connector
+// Import an toàn tương thích mọi cách export của phiên bản tiktok-live-connector mới nhất
 const TikTokLive = require('tiktok-live-connector');
-const WebcastPushConnection = TikTokLive.WebcastPushConnection || TikTokLive.default || TikTokLive;
+const WebcastPushConnection = TikTokLive.WebcastPushConnection || (TikTokLive.default ? TikTokLive.default.WebcastPushConnection : null) || TikTokLive.default || TikTokLive;
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Trang chủ báo trạng thái Server hoạt động
+// Trang chủ kiểm tra Server
 app.get('/', (req, res) => {
     res.send('<h1 style="color: green; text-align: center; margin-top: 50px;">TikTok Arena Backend Server Is Running Online!</h1>');
 });
@@ -39,15 +39,11 @@ app.post('/api/connect-tiktok', (req, res) => {
     }
 
     try {
-        // Bật cấu hình ký API tự động qua Sign Server của cộng đồng
+        // Khởi tạo kết nối tới TikTok với cấu hình tự động bypass sign request
         tiktokConnection = new WebcastPushConnection(username, {
             processInitialData: false,
             enableExtendedGiftInfo: true,
             enableWebSockets: true,
-            clientParams: {
-                app_language: 'en-US',
-                device_platform: 'web'
-            },
             requestOptions: {
                 timeout: 10000,
                 headers: {
