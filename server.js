@@ -1,23 +1,8 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const cors = require('cors');
-
-// Import thư viện TikTok Live
-const TikTokLive = require('tiktok-live-connector');
-
-// Hàm bổ trợ trích xuất đúng WebcastPushConnection Class từ mọi kiểu Export (CJS/ESM)
-function getWebcastPushConnection() {
-    if (typeof TikTokLive === 'function') return TikTokLive;
-    if (TikTokLive.WebcastPushConnection) return TikTokLive.WebcastPushConnection;
-    if (TikTokLive.default) {
-        if (typeof TikTokLive.default === 'function') return TikTokLive.default;
-        if (TikTokLive.default.WebcastPushConnection) return TikTokLive.default.WebcastPushConnection;
-    }
-    return TikTokLive;
-}
-
-const WebcastPushConnection = getWebcastPushConnection();
+import express from 'express';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import cors from 'cors';
+import { WebcastPushConnection } from 'tiktok-live-connector';
 
 const app = express();
 app.use(cors());
@@ -28,7 +13,7 @@ app.get('/', (req, res) => {
     res.send('<h1 style="color: green; text-align: center; margin-top: 50px;">TikTok Arena Backend Server Is Running Online!</h1>');
 });
 
-const server = http.createServer(app);
+const server = createServer(app);
 const io = new Server(server, {
     cors: {
         origin: "*",
@@ -51,11 +36,6 @@ app.post('/api/connect-tiktok', (req, res) => {
     }
 
     try {
-        // Kiểm tra an toàn trước khi khởi tạo
-        if (typeof WebcastPushConnection !== 'function') {
-            throw new Error("Không thể nạp WebcastPushConnection class từ thư viện tiktok-live-connector");
-        }
-
         // Khởi tạo kết nối tới TikTok
         tiktokConnection = new WebcastPushConnection(username, {
             processInitialData: false,
