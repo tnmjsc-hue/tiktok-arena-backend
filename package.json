@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Backend kết nối TikTok Live cho Game Sàn Đấu Võ 2D",
   "main": "server.js",
+  "type": "module",
   "scripts": {
     "start": "node server.js"
   },
