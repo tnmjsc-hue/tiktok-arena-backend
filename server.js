@@ -3,7 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 
-// Import thư viện tiktok-live-connector bản chuẩn 1.2.0
+// Import thư viện tiktok-live-connector
 const { WebcastPushConnection } = require('tiktok-live-connector');
 
 const app = express();
@@ -38,7 +38,7 @@ app.post('/api/connect-tiktok', (req, res) => {
     }
 
     try {
-        // Khởi tạo kết nối tới TikTok
+        // Khởi tạo kết nối tới TikTok với cấu hình tối ưu
         tiktokConnection = new WebcastPushConnection(username, {
             processInitialData: false,
             enableExtendedGiftInfo: true,
@@ -54,32 +54,40 @@ app.post('/api/connect-tiktok', (req, res) => {
         let isResponded = false;
 
         tiktokConnection.connect().then(state => {
-            console.log(`[TikTok] Đã kết nối thành công tới Live của: @${username}`);
+            const roomId = state && state.roomId ? state.roomId : "Unknown_Room";
+            console.log(`[TikTok] Đã kết nối thành công tới Live của: @${username} (Room ID: ${roomId})`);
+            
             io.emit('TIKTOK_STATUS', { connected: true, username });
+            
             if (!isResponded) {
                 isResponded = true;
-                res.json({ success: true, roomId: state.roomId });
+                res.json({ success: true, roomId });
             }
         }).catch(err => {
-            console.error('[TikTok] Lỗi kết nối:', err.message || err);
-            io.emit('TIKTOK_STATUS', { connected: false, error: "Kênh chưa phát Live hoặc lỗi TikTok" });
+            const errorMsg = (err && err.message) ? err.message : "Tài khoản không phát Live hoặc lỗi kết nối TikTok";
+            console.error('[TikTok] Lỗi kết nối:', errorMsg);
+            
+            io.emit('TIKTOK_STATUS', { connected: false, error: errorMsg });
+            
             if (!isResponded) {
                 isResponded = true;
-                res.status(500).json({ error: "Không thể kết nối. Hãy đảm bảo tài khoản đang BẮT ĐẦU LIVE!" });
+                res.status(500).json({ error: errorMsg });
             }
         });
 
         // 1. SỰ KIỆN KHÁN GIẢ MỚI VÀO PHÒNG LIVE
         tiktokConnection.on('member', data => {
-            const nickname = data.nickname || data.uniqueId;
+            if (!data) return;
+            const nickname = data.nickname || data.uniqueId || 'Khán giả';
             console.log(`[Join] Khán giả mới vào: ${nickname}`);
             io.emit('GAME_COMMAND', { type: 'SPAWN_AUDIENCE', user: nickname });
         });
 
         // 2. SỰ KIỆN BÌNH LUẬN (CHAT)
         tiktokConnection.on('chat', data => {
+            if (!data || !data.comment) return;
             const comment = data.comment.toLowerCase().trim();
-            const nickname = data.nickname || data.uniqueId;
+            const nickname = data.nickname || data.uniqueId || 'Viewer';
 
             console.log(`[Chat] ${nickname}: ${comment}`);
 
@@ -94,16 +102,17 @@ app.post('/api/connect-tiktok', (req, res) => {
 
         // 3. SỰ KIỆN TẶNG QUÀ (GIFT)
         tiktokConnection.on('gift', data => {
+            if (!data) return;
             if (data.giftType === 1 && data.repeatEnd) {
-                const nickname = data.nickname || data.uniqueId;
-                const giftName = data.giftName;
-                const count = data.repeatCount;
+                const nickname = data.nickname || data.uniqueId || 'Mạnh thường quân';
+                const giftName = data.giftName || 'Món quà';
+                const count = data.repeatCount || 1;
 
                 if (giftName === 'Rose' || giftName === 'Hoa hồng') {
                     for (let i = 0; i < Math.min(count, 5); i++) {
                         io.emit('GAME_COMMAND', { type: 'SPAWN_AUDIENCE', user: nickname });
                     }
-                } else if (data.diamondCount >= 10) {
+                } else if ((data.diamondCount || 0) >= 10) {
                     io.emit('GAME_COMMAND', { type: 'ULTIMATE', user: nickname, giftName });
                 }
             }
@@ -114,9 +123,15 @@ app.post('/api/connect-tiktok', (req, res) => {
             io.emit('GAME_COMMAND', { type: 'ENVIRONMENT', action: 'flash_light' });
         });
 
+        // Bắt lỗi ngầm từ Socket TikTok
+        tiktokConnection.on('error', err => {
+            console.error('[TikTok Socket Warning]:', err && err.message ? err.message : err);
+        });
+
     } catch (err) {
-        console.error('[Init Error]:', err.message || err);
-        res.status(500).json({ error: "Lỗi khởi tạo thư viện TikTok: " + err.message });
+        const message = (err && err.message) ? err.message : String(err);
+        console.error('[Init Error]:', message);
+        res.status(500).json({ error: "Lỗi khởi tạo thư viện TikTok: " + message });
     }
 });
 
