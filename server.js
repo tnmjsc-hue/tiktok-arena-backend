@@ -26,6 +26,21 @@ const io = new Server(server, {
 });
 
 let tiktokConnection = null;
+let activeTikTokUsername = null;
+let tiktokConnectPromise = null;
+
+function getTikTokStatus() {
+    let connected = false;
+    try {
+        connected = Boolean(tiktokConnection && tiktokConnection.state.isConnected);
+    } catch (err) {}
+
+    return {
+        connected,
+        connecting: Boolean(tiktokConnectPromise),
+        username: activeTikTokUsername
+    };
+}
 
 // API kết nối phòng TikTok Live
 app.post('/api/connect-tiktok', async (req, res) => {
@@ -36,6 +51,17 @@ app.post('/api/connect-tiktok', async (req, res) => {
     } catch (err) {
         const message = (err && err.message) ? err.message : 'Link TikTok không hợp lệ';
         return res.status(400).json({ error: message });
+    }
+
+    const currentStatus = getTikTokStatus();
+    if (activeTikTokUsername === username && (currentStatus.connected || tiktokConnectPromise)) {
+        try {
+            const state = currentStatus.connected ? tiktokConnection.state : await tiktokConnectPromise;
+            return res.json({ success: true, roomId: state.roomId, reused: true });
+        } catch (err) {
+            const message = (err && err.message) ? err.message : 'Không thể kết nối TikTok Live';
+            return res.status(500).json({ error: message });
+        }
     }
 
     if (tiktokConnection) {
@@ -55,10 +81,14 @@ app.post('/api/connect-tiktok', async (req, res) => {
                 }
             }
         });
+        activeTikTokUsername = username;
 
         let isResponded = false;
 
-        tiktokConnection.connect().then(state => {
+        const currentConnectPromise = tiktokConnection.connect();
+        tiktokConnectPromise = currentConnectPromise;
+
+        currentConnectPromise.then(state => {
             const roomId = state && state.roomId ? state.roomId : "Live_Room";
             console.log(`[TikTok] Đã kết nối thành công tới Live của: @${username} (Room ID: ${roomId})`);
             
@@ -77,6 +107,10 @@ app.post('/api/connect-tiktok', async (req, res) => {
             if (!isResponded) {
                 isResponded = true;
                 res.status(500).json({ error: errorMsg });
+            }
+        }).finally(() => {
+            if (tiktokConnectPromise === currentConnectPromise) {
+                tiktokConnectPromise = null;
             }
         });
 
@@ -150,6 +184,9 @@ app.post('/api/test-command', (req, res) => {
 
 io.on('connection', (socket) => {
     console.log('[Socket] Client Frontend đã kết nối:', socket.id);
+    socket.on('GET_TIKTOK_STATUS', (callback) => {
+        if (typeof callback === 'function') callback(getTikTokStatus());
+    });
 });
 
 const PORT = process.env.PORT || 10000;
