@@ -102,7 +102,10 @@ app.post('/api/test-command', (req, res) => {
 io.on('connection', (socket) => {
     console.log('[Socket] Client Frontend đã kết nối:', socket.id);
 });
-
+// Thêm đường dẫn trang chủ GET / để kiểm tra trạng thái
+app.get('/', (req, res) => {
+    res.send('<h1>TikTok Arena Backend Server Is Running Online!</h1>');
+});
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
     console.log(`=================================`);
