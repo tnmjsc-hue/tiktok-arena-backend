@@ -1,7 +1,7 @@
 {
   "name": "tiktok-arena-backend",
   "version": "1.0.0",
-  "description": "Backend kết nối TikTok Live cho Game Sàn Đấu Võ 2D",
+  "description": "Backend kết nối TikTok Live",
   "main": "server.js",
   "type": "module",
   "scripts": {
