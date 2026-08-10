@@ -39,10 +39,21 @@ app.post('/api/connect-tiktok', (req, res) => {
     }
 
     try {
+        // Bật cấu hình ký API tự động qua Sign Server của cộng đồng
         tiktokConnection = new WebcastPushConnection(username, {
             processInitialData: false,
             enableExtendedGiftInfo: true,
-            requestOptions: { timeout: 10000 }
+            enableWebSockets: true,
+            clientParams: {
+                app_language: 'en-US',
+                device_platform: 'web'
+            },
+            requestOptions: {
+                timeout: 10000,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                }
+            }
         });
 
         let isResponded = false;
