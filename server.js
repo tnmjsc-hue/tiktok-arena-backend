@@ -130,19 +130,17 @@ app.post('/api/connect-tiktok', async (req, res) => {
             console.log(`[Chat] ${nickname}: ${comment}`);
 
             if (comment === '!dam' || comment === 'dam') {
-                io.emit('GAME_COMMAND', { type: 'ATTACK', action: 'punch', user: nickname });
+                io.emit('GAME_COMMAND', { type: 'FINISHER', side: 'blue', action: 'punch', user: nickname });
             } else if (comment === '!da' || comment === 'da') {
-                io.emit('GAME_COMMAND', { type: 'ATTACK', action: 'kick', user: nickname });
+                io.emit('GAME_COMMAND', { type: 'FINISHER', side: 'blue', action: 'kick', user: nickname });
             } else if (comment === '!chuong' || comment === 'chuong') {
-                io.emit('GAME_COMMAND', { type: 'ATTACK', action: 'energy', user: nickname });
-            } else if (comment === '!do' || comment === 'do') {
-                io.emit('GAME_COMMAND', { type: 'DEFENSE', action: 'block', user: nickname });
-            } else if (comment === '!ne' || comment === 'ne') {
-                io.emit('GAME_COMMAND', { type: 'DEFENSE', action: 'dodge', user: nickname });
-            } else if (comment === '!trung' || comment === 'trung') {
-                io.emit('GAME_COMMAND', { type: 'REACTION', action: 'hit', user: nickname });
-            } else if (comment === '!nga' || comment === 'nga') {
-                io.emit('GAME_COMMAND', { type: 'REACTION', action: 'knockdown', user: nickname });
+                io.emit('GAME_COMMAND', { type: 'FINISHER', side: 'blue', action: 'energy', user: nickname });
+            } else if (comment === '!damdo' || comment === 'damdo') {
+                io.emit('GAME_COMMAND', { type: 'FINISHER', side: 'red', action: 'punch', user: nickname });
+            } else if (comment === '!dado' || comment === 'dado') {
+                io.emit('GAME_COMMAND', { type: 'FINISHER', side: 'red', action: 'kick', user: nickname });
+            } else if (comment === '!chuongdo' || comment === 'chuongdo') {
+                io.emit('GAME_COMMAND', { type: 'FINISHER', side: 'red', action: 'energy', user: nickname });
             } else if (comment === '!zoom' || comment === 'zoom') {
                 io.emit('GAME_COMMAND', { type: 'CAMERA', action: 'zoom_in' });
             }
@@ -156,13 +154,13 @@ app.post('/api/connect-tiktok', async (req, res) => {
             const nickname = data.user?.nickname || data.user?.displayId || 'Mạnh thường quân';
             const giftName = data.gift.name || 'Món quà';
             const count = data.repeatCount || 1;
+            const diamondCount = (data.gift.diamondCount || 0) * count;
+            const isLargeGift = diamondCount >= 10;
 
             if (giftName === 'Rose' || giftName === 'Hoa hồng') {
                 for (let i = 0; i < Math.min(count, 5); i++) {
                     io.emit('GAME_COMMAND', { type: 'SPAWN_AUDIENCE', user: nickname });
                 }
-            } else if ((data.gift.diamondCount || 0) >= 10) {
-                io.emit('GAME_COMMAND', { type: 'ULTIMATE', user: nickname, giftName });
             }
 
             io.emit('GAME_COMMAND', {
@@ -171,7 +169,8 @@ app.post('/api/connect-tiktok', async (req, res) => {
                 user: nickname,
                 giftName,
                 count,
-                diamondCount: (data.gift.diamondCount || 0) * count
+                diamondCount,
+                isLargeGift
             });
         });
 
@@ -195,14 +194,16 @@ app.post('/api/connect-tiktok', async (req, res) => {
 
 // API giả lập test khi không cắm Live
 app.post('/api/test-command', (req, res) => {
-    const { type, action, user, giftName, count, diamondCount } = req.body;
+    const { type, action, side, user, giftName, count, diamondCount, isLargeGift } = req.body;
     io.emit('GAME_COMMAND', {
         type,
         action,
+        side,
         user: user || 'Viewer_Test',
         giftName,
         count,
-        diamondCount
+        diamondCount,
+        isLargeGift
     });
     res.json({ status: 'sent' });
 });
