@@ -154,6 +154,15 @@ app.post('/api/connect-tiktok', async (req, res) => {
             } else if ((data.gift.diamondCount || 0) >= 10) {
                 io.emit('GAME_COMMAND', { type: 'ULTIMATE', user: nickname, giftName });
             }
+
+            io.emit('GAME_COMMAND', {
+                type: 'GIFT_RECEIVED',
+                action: 'gift',
+                user: nickname,
+                giftName,
+                count,
+                diamondCount: (data.gift.diamondCount || 0) * count
+            });
         });
 
         // 4. SỰ KIỆN THẢ TIM (LIKE)
@@ -176,8 +185,15 @@ app.post('/api/connect-tiktok', async (req, res) => {
 
 // API giả lập test khi không cắm Live
 app.post('/api/test-command', (req, res) => {
-    const { type, action, user } = req.body;
-    io.emit('GAME_COMMAND', { type, action, user: user || 'Viewer_Test' });
+    const { type, action, user, giftName, count, diamondCount } = req.body;
+    io.emit('GAME_COMMAND', {
+        type,
+        action,
+        user: user || 'Viewer_Test',
+        giftName,
+        count,
+        diamondCount
+    });
     res.json({ status: 'sent' });
 });
 
