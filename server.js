@@ -140,19 +140,19 @@ app.post('/api/connect-tiktok', async (req, res) => {
 
         // 3. SỰ KIỆN TẶNG QUÀ (GIFT)
         tiktokConnection.on('gift', data => {
-            if (!data) return;
-            if (data.giftType === 1 && data.repeatEnd) {
-                const nickname = data.user?.nickname || data.user?.displayId || 'Mạnh thường quân';
-                const giftName = data.gift?.name || 'Món quà';
-                const count = data.repeatCount || 1;
+            if (!data || !data.gift) return;
+            if (data.gift.type === 1 && !data.repeatEnd) return;
 
-                if (giftName === 'Rose' || giftName === 'Hoa hồng') {
-                    for (let i = 0; i < Math.min(count, 5); i++) {
-                        io.emit('GAME_COMMAND', { type: 'SPAWN_AUDIENCE', user: nickname });
-                    }
-                } else if ((data.gift?.diamondCount || 0) >= 10) {
-                    io.emit('GAME_COMMAND', { type: 'ULTIMATE', user: nickname, giftName });
+            const nickname = data.user?.nickname || data.user?.displayId || 'Mạnh thường quân';
+            const giftName = data.gift.name || 'Món quà';
+            const count = data.repeatCount || 1;
+
+            if (giftName === 'Rose' || giftName === 'Hoa hồng') {
+                for (let i = 0; i < Math.min(count, 5); i++) {
+                    io.emit('GAME_COMMAND', { type: 'SPAWN_AUDIENCE', user: nickname });
                 }
+            } else if ((data.gift.diamondCount || 0) >= 10) {
+                io.emit('GAME_COMMAND', { type: 'ULTIMATE', user: nickname, giftName });
             }
         });
 
