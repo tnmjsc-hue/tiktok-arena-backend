@@ -3,7 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 
-// Import thư viện tiktok-live-connector
+// Import WebcastPushConnection từ tiktok-live-connector v2
 const { WebcastPushConnection } = require('tiktok-live-connector');
 
 const app = express();
@@ -38,23 +38,20 @@ app.post('/api/connect-tiktok', (req, res) => {
     }
 
     try {
-        // Khởi tạo kết nối tới TikTok với cấu hình tối ưu
+        // Khởi tạo kết nối với cấu hình v2
         tiktokConnection = new WebcastPushConnection(username, {
             processInitialData: false,
             enableExtendedGiftInfo: true,
             enableWebSockets: true,
             requestOptions: {
-                timeout: 10000,
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                }
+                timeout: 10000
             }
         });
 
         let isResponded = false;
 
         tiktokConnection.connect().then(state => {
-            const roomId = state && state.roomId ? state.roomId : "Unknown_Room";
+            const roomId = state && state.roomId ? state.roomId : "Live_Room";
             console.log(`[TikTok] Đã kết nối thành công tới Live của: @${username} (Room ID: ${roomId})`);
             
             io.emit('TIKTOK_STATUS', { connected: true, username });
@@ -64,7 +61,7 @@ app.post('/api/connect-tiktok', (req, res) => {
                 res.json({ success: true, roomId });
             }
         }).catch(err => {
-            const errorMsg = (err && err.message) ? err.message : "Tài khoản không phát Live hoặc lỗi kết nối TikTok";
+            const errorMsg = (err && err.message) ? err.message : "Tài khoản hiện KHÔNG BẮT ĐẦU LIVE hoặc sai Username";
             console.error('[TikTok] Lỗi kết nối:', errorMsg);
             
             io.emit('TIKTOK_STATUS', { connected: false, error: errorMsg });
@@ -123,9 +120,10 @@ app.post('/api/connect-tiktok', (req, res) => {
             io.emit('GAME_COMMAND', { type: 'ENVIRONMENT', action: 'flash_light' });
         });
 
-        // Bắt lỗi ngầm từ Socket TikTok
-        tiktokConnection.on('error', err => {
-            console.error('[TikTok Socket Warning]:', err && err.message ? err.message : err);
+        // Bắt lỗi ngầm không làm sập server
+        tiktokConnection.on('streamEnd', () => {
+            console.log('[TikTok] Phiên Live đã kết thúc.');
+            io.emit('TIKTOK_STATUS', { connected: false, error: "Phiên Live đã kết thúc" });
         });
 
     } catch (err) {
