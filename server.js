@@ -2,7 +2,13 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
-import { WebcastPushConnection } from 'tiktok-live-connector';
+import * as TikTokModule from 'tiktok-live-connector';
+
+// Tự động tìm đúng class WebcastPushConnection bất kể cách thư viện export
+const WebcastPushConnection = 
+    TikTokModule.WebcastPushConnection || 
+    TikTokModule.default?.WebcastPushConnection || 
+    TikTokModule.default;
 
 const app = express();
 app.use(cors());
@@ -36,6 +42,10 @@ app.post('/api/connect-tiktok', (req, res) => {
     }
 
     try {
+        if (typeof WebcastPushConnection !== 'function') {
+            throw new Error("Không thể nạp WebcastPushConnection Class. Vui lòng kiểm tra lại phiên bản thư viện.");
+        }
+
         // Khởi tạo kết nối tới TikTok
         tiktokConnection = new WebcastPushConnection(username, {
             processInitialData: false,
