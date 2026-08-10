@@ -28,6 +28,7 @@ let tiktokConnection = null;
 let activeTikTokUsername = null;
 let tiktokConnectPromise = null;
 let giftCommandBindings = {};
+let giftDisplayCatalog = [];
 
 function normalizeGiftName(name) {
     return String(name || '').trim().toLocaleLowerCase('vi-VN');
@@ -47,6 +48,27 @@ function sanitizeGiftBindings(bindings) {
         }
     });
     return sanitized;
+}
+
+function sanitizeGiftCatalog(catalog) {
+    if (!Array.isArray(catalog)) return [];
+    const seen = new Set();
+    return catalog.slice(0, 250).reduce((result, gift) => {
+        const name = String(gift && gift.name || '').trim().slice(0, 80);
+        const id = normalizeGiftName(name);
+        if (!id || seen.has(id)) return result;
+        seen.add(id);
+        result.push({
+            name,
+            diamonds: Math.max(0, Math.round(Number(gift.diamonds) || 0)),
+            source: String(gift.source || 'control').slice(0, 20)
+        });
+        return result;
+    }, []);
+}
+
+function getGiftDisplayConfig() {
+    return { bindings: giftCommandBindings, catalog: giftDisplayCatalog };
 }
 
 function resolveGiftCommand(giftName) {
@@ -245,13 +267,17 @@ io.on('connection', (socket) => {
     socket.on('GET_TIKTOK_STATUS', (callback) => {
         if (typeof callback === 'function') callback(getTikTokStatus());
     });
-    socket.on('UPDATE_GIFT_BINDINGS', (bindings, callback) => {
+    socket.on('UPDATE_GIFT_BINDINGS', (payload, callback) => {
+        const bindings = payload && payload.bindings ? payload.bindings : payload;
         giftCommandBindings = sanitizeGiftBindings(bindings);
-        io.emit('GIFT_BINDINGS_UPDATED', giftCommandBindings);
+        if (payload && Array.isArray(payload.catalog)) {
+            giftDisplayCatalog = sanitizeGiftCatalog(payload.catalog);
+        }
+        io.emit('GIFT_BINDINGS_UPDATED', getGiftDisplayConfig());
         if (typeof callback === 'function') callback({ success: true, count: Object.keys(giftCommandBindings).length });
     });
     socket.on('GET_GIFT_BINDINGS', (callback) => {
-        if (typeof callback === 'function') callback(giftCommandBindings);
+        if (typeof callback === 'function') callback(getGiftDisplayConfig());
     });
 });
 
