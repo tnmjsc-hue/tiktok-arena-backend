@@ -4,8 +4,7 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const { resolveTikTokUsername } = require('./tiktok-input');
 
-// Import WebcastPushConnection từ tiktok-live-connector v2
-const { WebcastPushConnection } = require('tiktok-live-connector/legacy');
+const { TikTokLiveConnection } = require('tiktok-live-connector');
 
 const app = express();
 app.use(cors());
@@ -70,7 +69,7 @@ app.post('/api/connect-tiktok', async (req, res) => {
 
     try {
         // Khởi tạo kết nối với cấu hình v2
-        tiktokConnection = new WebcastPushConnection(username, {
+        tiktokConnection = new TikTokLiveConnection(username, {
             processInitialData: false,
             // Extended gift metadata requires EulerStream's paid signing route.
             // Basic gift events still include the fields used by this app.
@@ -117,16 +116,16 @@ app.post('/api/connect-tiktok', async (req, res) => {
         // 1. SỰ KIỆN KHÁN GIẢ MỚI VÀO PHÒNG LIVE
         tiktokConnection.on('member', data => {
             if (!data) return;
-            const nickname = data.nickname || data.uniqueId || 'Khán giả';
+            const nickname = data.user?.nickname || data.user?.displayId || 'Khán giả';
             console.log(`[Join] Khán giả mới vào: ${nickname}`);
             io.emit('GAME_COMMAND', { type: 'SPAWN_AUDIENCE', user: nickname });
         });
 
         // 2. SỰ KIỆN BÌNH LUẬN (CHAT)
         tiktokConnection.on('chat', data => {
-            if (!data || !data.comment) return;
-            const comment = data.comment.toLowerCase().trim();
-            const nickname = data.nickname || data.uniqueId || 'Viewer';
+            if (!data || !data.content) return;
+            const comment = data.content.toLowerCase().trim();
+            const nickname = data.user?.nickname || data.user?.displayId || 'Viewer';
 
             console.log(`[Chat] ${nickname}: ${comment}`);
 
@@ -143,15 +142,15 @@ app.post('/api/connect-tiktok', async (req, res) => {
         tiktokConnection.on('gift', data => {
             if (!data) return;
             if (data.giftType === 1 && data.repeatEnd) {
-                const nickname = data.nickname || data.uniqueId || 'Mạnh thường quân';
-                const giftName = data.giftName || 'Món quà';
+                const nickname = data.user?.nickname || data.user?.displayId || 'Mạnh thường quân';
+                const giftName = data.gift?.name || 'Món quà';
                 const count = data.repeatCount || 1;
 
                 if (giftName === 'Rose' || giftName === 'Hoa hồng') {
                     for (let i = 0; i < Math.min(count, 5); i++) {
                         io.emit('GAME_COMMAND', { type: 'SPAWN_AUDIENCE', user: nickname });
                     }
-                } else if ((data.diamondCount || 0) >= 10) {
+                } else if ((data.gift?.diamondCount || 0) >= 10) {
                     io.emit('GAME_COMMAND', { type: 'ULTIMATE', user: nickname, giftName });
                 }
             }
