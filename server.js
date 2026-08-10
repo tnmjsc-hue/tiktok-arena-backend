@@ -27,6 +27,36 @@ const io = new Server(server, {
 let tiktokConnection = null;
 let activeTikTokUsername = null;
 let tiktokConnectPromise = null;
+let giftCommandBindings = {};
+
+function normalizeGiftName(name) {
+    return String(name || '').trim().toLocaleLowerCase('vi-VN');
+}
+
+function sanitizeGiftBindings(bindings) {
+    const allowedSides = new Set(['blue', 'red']);
+    const allowedActions = new Set(['punch', 'kick', 'energy']);
+    const sanitized = {};
+    if (!bindings || typeof bindings !== 'object' || Array.isArray(bindings)) return sanitized;
+
+    Object.entries(bindings).forEach(([key, giftName]) => {
+        const [side, action] = String(key).split(':');
+        const normalizedGift = normalizeGiftName(giftName);
+        if (allowedSides.has(side) && allowedActions.has(action) && normalizedGift) {
+            sanitized[`${side}:${action}`] = normalizedGift;
+        }
+    });
+    return sanitized;
+}
+
+function resolveGiftCommand(giftName) {
+    const normalizedGift = normalizeGiftName(giftName);
+    const match = Object.entries(giftCommandBindings)
+        .find(([, assignedGift]) => assignedGift === normalizedGift);
+    if (!match) return null;
+    const [side, action] = match[0].split(':');
+    return { side, action };
+}
 
 function getTikTokStatus() {
     let connected = false;
@@ -170,7 +200,8 @@ app.post('/api/connect-tiktok', async (req, res) => {
                 giftName,
                 count,
                 diamondCount,
-                isLargeGift
+                isLargeGift,
+                giftCommand: resolveGiftCommand(giftName)
             });
         });
 
@@ -203,7 +234,8 @@ app.post('/api/test-command', (req, res) => {
         giftName,
         count,
         diamondCount,
-        isLargeGift
+        isLargeGift,
+        giftCommand: type === 'GIFT_RECEIVED' ? resolveGiftCommand(giftName) : null
     });
     res.json({ status: 'sent' });
 });
@@ -212,6 +244,14 @@ io.on('connection', (socket) => {
     console.log('[Socket] Client Frontend đã kết nối:', socket.id);
     socket.on('GET_TIKTOK_STATUS', (callback) => {
         if (typeof callback === 'function') callback(getTikTokStatus());
+    });
+    socket.on('UPDATE_GIFT_BINDINGS', (bindings, callback) => {
+        giftCommandBindings = sanitizeGiftBindings(bindings);
+        io.emit('GIFT_BINDINGS_UPDATED', giftCommandBindings);
+        if (typeof callback === 'function') callback({ success: true, count: Object.keys(giftCommandBindings).length });
+    });
+    socket.on('GET_GIFT_BINDINGS', (callback) => {
+        if (typeof callback === 'function') callback(giftCommandBindings);
     });
 });
 
