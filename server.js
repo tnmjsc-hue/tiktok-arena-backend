@@ -41,10 +41,13 @@ app.post('/api/connect-tiktok', (req, res) => {
         // Khởi tạo kết nối với cấu hình v2
         tiktokConnection = new WebcastPushConnection(username, {
             processInitialData: false,
-            enableExtendedGiftInfo: true,
-            enableWebSockets: true,
-            requestOptions: {
-                timeout: 10000
+            // Extended gift metadata requires EulerStream's paid signing route.
+            // Basic gift events still include the fields used by this app.
+            enableExtendedGiftInfo: false,
+            webClientOptions: {
+                timeout: {
+                    request: 10000
+                }
             }
         });
 
