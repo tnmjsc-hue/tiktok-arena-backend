@@ -32,62 +32,46 @@ app.post('/api/connect-tiktok', (req, res) => {
     }
 
     if (tiktokConnection) {
-        tiktokConnection.disconnect();
+        try { tiktokConnection.disconnect(); } catch(e) {}
     }
 
-    tiktokConnection = new WebcastPushConnection(username);
+    // Thiết lập kết nối với thời gian chờ Timeout 10 giây
+    tiktokConnection = new WebcastPushConnection(username, {
+        processInitialData: false,
+        enableExtendedGiftInfo: true,
+        requestOptions: {
+            timeout: 10000 // 10 giây không phản hồi sẽ tự ngắt
+        }
+    });
+
+    // Biến kiểm tra xem response đã được trả về chưa
+    let isResponded = false;
 
     tiktokConnection.connect().then(state => {
         console.log(`[TikTok] Đã kết nối tới Live của: @${username} (Room ID: ${state.roomId})`);
         io.emit('TIKTOK_STATUS', { connected: true, username });
-        res.json({ success: true, roomId: state.roomId });
+        if (!isResponded) {
+            isResponded = true;
+            res.json({ success: true, roomId: state.roomId });
+        }
     }).catch(err => {
-        console.error('[TikTok] Lỗi kết nối:', err);
-        io.emit('TIKTOK_STATUS', { connected: false, error: err.message });
-        res.status(500).json({ error: "Không thể kết nối TikTok Live" });
-    });
-
-    // Lắng nghe COMMENT
-    tiktokConnection.on('chat', data => {
-        const comment = data.comment.toLowerCase().trim();
-        const nickname = data.nickname || data.uniqueId;
-
-        console.log(`[Chat] ${nickname}: ${comment}`);
-
-        // Xử lý lệnh từ chat
-        if (comment === '!dam' || comment === 'dam') {
-            io.emit('GAME_COMMAND', { type: 'ATTACK', action: 'punch', user: nickname });
-        } else if (comment === '!da' || comment === 'da') {
-            io.emit('GAME_COMMAND', { type: 'ATTACK', action: 'kick', user: nickname });
-        } else if (comment === '!zoom' || comment === 'zoom') {
-            io.emit('GAME_COMMAND', { type: 'CAMERA', action: 'zoom_in' });
-        } else if (comment === '!nhay' || comment === 'nhay') {
-            io.emit('GAME_COMMAND', { type: 'ATTACK', action: 'jump', user: nickname });
+        console.error('[TikTok] Lỗi kết nối:', err.message || err);
+        io.emit('TIKTOK_STATUS', { connected: false, error: "Kênh chưa phát Live hoặc lỗi TikTok" });
+        if (!isResponded) {
+            isResponded = true;
+            res.status(500).json({ error: "Không thể kết nối. Đảm bảo tài khoản đang BẮT ĐẦU LIVE!" });
         }
     });
 
-    // Lắng nghe TẶNG QUÀ (Gift)
-    tiktokConnection.on('gift', data => {
-        if (data.giftType === 1 && data.repeatEnd) { // Khi kết thúc chuỗi combo quà
-            const nickname = data.nickname || data.uniqueId;
-            const giftName = data.giftName;
-            const count = data.repeatCount;
-
-            console.log(`[Gift] ${nickname} tặng ${count}x ${giftName}`);
-
-            if (giftName === 'Rose' || giftName === 'Hoa hồng') {
-                // Tặng hoa hồng -> Tạo khán giả mới
-                io.emit('GAME_COMMAND', { type: 'SPAWN_AUDIENCE', user: nickname, count: count });
-            } else if (data.diamondCount >= 10) {
-                // Quà lớn -> Chiêu đặc biệt + Cinematic Camera
-                io.emit('GAME_COMMAND', { type: 'ULTIMATE', user: nickname, giftName: giftName });
-            }
-        }
+    // Thêm sự kiện lắng nghe ngắt kết nối đột ngột từ TikTok
+    tiktokConnection.on('streamEnd', () => {
+        console.log('[TikTok] Phiên Live đã kết thúc.');
+        io.emit('TIKTOK_STATUS', { connected: false, error: "Phiên Live đã kết thúc" });
     });
 
-    // Lắng nghe THẢ TIM (Like)
-    tiktokConnection.on('like', data => {
-        io.emit('GAME_COMMAND', { type: 'ENVIRONMENT', action: 'flash_light', totalLikes: data.totalLikeCount });
+    // Bắt lỗi chung của Socket TikTok
+    tiktokConnection.on('error', err => {
+        console.error('[TikTok Error]:', err);
     });
 });
 
