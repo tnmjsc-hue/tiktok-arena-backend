@@ -1,14 +1,10 @@
-import express from 'express';
-import { createServer } from 'http';
-import { Server } from 'socket.io';
-import cors from 'cors';
-import * as TikTokModule from 'tiktok-live-connector';
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const cors = require('cors');
 
-// Tự động tìm đúng class WebcastPushConnection bất kể cách thư viện export
-const WebcastPushConnection = 
-    TikTokModule.WebcastPushConnection || 
-    TikTokModule.default?.WebcastPushConnection || 
-    TikTokModule.default;
+// Import thư viện tiktok-live-connector bản chuẩn 1.2.0
+const { WebcastPushConnection } = require('tiktok-live-connector');
 
 const app = express();
 app.use(cors());
@@ -19,7 +15,7 @@ app.get('/', (req, res) => {
     res.send('<h1 style="color: green; text-align: center; margin-top: 50px;">TikTok Arena Backend Server Is Running Online!</h1>');
 });
 
-const server = createServer(app);
+const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
         origin: "*",
@@ -42,10 +38,6 @@ app.post('/api/connect-tiktok', (req, res) => {
     }
 
     try {
-        if (typeof WebcastPushConnection !== 'function') {
-            throw new Error("Không thể nạp WebcastPushConnection Class. Vui lòng kiểm tra lại phiên bản thư viện.");
-        }
-
         // Khởi tạo kết nối tới TikTok
         tiktokConnection = new WebcastPushConnection(username, {
             processInitialData: false,
