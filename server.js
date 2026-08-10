@@ -29,6 +29,7 @@ let activeTikTokUsername = null;
 let tiktokConnectPromise = null;
 let giftCommandBindings = {};
 let giftDisplayCatalog = [];
+let fighterDisplayNames = { blue: 'VÕ SĨ XANH', red: 'VÕ SĨ ĐỎ' };
 
 function normalizeGiftName(name) {
     return String(name || '').trim().toLocaleLowerCase('vi-VN');
@@ -67,8 +68,20 @@ function sanitizeGiftCatalog(catalog) {
     }, []);
 }
 
+function sanitizeFighterNames(names) {
+    if (!names || typeof names !== 'object') return fighterDisplayNames;
+    return {
+        blue: String(names.blue || 'VÕ SĨ XANH').trim().slice(0, 24),
+        red: String(names.red || 'VÕ SĨ ĐỎ').trim().slice(0, 24)
+    };
+}
+
 function getGiftDisplayConfig() {
-    return { bindings: giftCommandBindings, catalog: giftDisplayCatalog };
+    return {
+        bindings: giftCommandBindings,
+        catalog: giftDisplayCatalog,
+        fighterNames: fighterDisplayNames
+    };
 }
 
 function resolveGiftCommand(giftName) {
@@ -272,6 +285,9 @@ io.on('connection', (socket) => {
         giftCommandBindings = sanitizeGiftBindings(bindings);
         if (payload && Array.isArray(payload.catalog)) {
             giftDisplayCatalog = sanitizeGiftCatalog(payload.catalog);
+        }
+        if (payload && payload.fighterNames) {
+            fighterDisplayNames = sanitizeFighterNames(payload.fighterNames);
         }
         io.emit('GIFT_BINDINGS_UPDATED', getGiftDisplayConfig());
         if (typeof callback === 'function') callback({ success: true, count: Object.keys(giftCommandBindings).length });
