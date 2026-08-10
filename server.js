@@ -193,6 +193,12 @@ app.post('/api/connect-tiktok', async (req, res) => {
             const nickname = data.user?.nickname || data.user?.displayId || 'Viewer';
 
             console.log(`[Chat] ${nickname}: ${comment}`);
+            io.emit('GAME_COMMAND', {
+                type: 'VIEWER_COMMENT',
+                action: 'comment',
+                user: nickname,
+                comment: data.content
+            });
 
             if (comment === '!dam' || comment === 'dam') {
                 io.emit('GAME_COMMAND', { type: 'FINISHER', side: 'blue', action: 'punch', user: nickname });
