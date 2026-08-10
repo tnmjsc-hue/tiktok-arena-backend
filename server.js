@@ -133,6 +133,16 @@ app.post('/api/connect-tiktok', async (req, res) => {
                 io.emit('GAME_COMMAND', { type: 'ATTACK', action: 'punch', user: nickname });
             } else if (comment === '!da' || comment === 'da') {
                 io.emit('GAME_COMMAND', { type: 'ATTACK', action: 'kick', user: nickname });
+            } else if (comment === '!chuong' || comment === 'chuong') {
+                io.emit('GAME_COMMAND', { type: 'ATTACK', action: 'energy', user: nickname });
+            } else if (comment === '!do' || comment === 'do') {
+                io.emit('GAME_COMMAND', { type: 'DEFENSE', action: 'block', user: nickname });
+            } else if (comment === '!ne' || comment === 'ne') {
+                io.emit('GAME_COMMAND', { type: 'DEFENSE', action: 'dodge', user: nickname });
+            } else if (comment === '!trung' || comment === 'trung') {
+                io.emit('GAME_COMMAND', { type: 'REACTION', action: 'hit', user: nickname });
+            } else if (comment === '!nga' || comment === 'nga') {
+                io.emit('GAME_COMMAND', { type: 'REACTION', action: 'knockdown', user: nickname });
             } else if (comment === '!zoom' || comment === 'zoom') {
                 io.emit('GAME_COMMAND', { type: 'CAMERA', action: 'zoom_in' });
             }
