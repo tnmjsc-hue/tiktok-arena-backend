@@ -4,7 +4,7 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 
 // Import WebcastPushConnection từ tiktok-live-connector v2
-const { WebcastPushConnection } = require('tiktok-live-connector');
+const { WebcastPushConnection } = require('tiktok-live-connector/legacy');
 
 const app = express();
 app.use(cors());
