@@ -1,0 +1,37 @@
+diff --git a/node_modules/tiktok-live-connector/dist/lib-CbB_CSnH.js b/node_modules/tiktok-live-connector/dist/lib-CbB_CSnH.js
+index ae48fcc..b3c229a 100644
+--- a/node_modules/tiktok-live-connector/dist/lib-CbB_CSnH.js
++++ b/node_modules/tiktok-live-connector/dist/lib-CbB_CSnH.js
+@@ -82,8 +82,8 @@ var SignatureRateLimitError = class SignatureRateLimitError extends SignAPIError
+ 	constructor(apiMessage, formatStr, response) {
+ 		const retryAfter = SignatureRateLimitError.calculateRetryAfter(response);
+ 		const resetTime = SignatureRateLimitError.calculateResetTime(response);
+-		const logId = response.headers["x-log-id"];
+-		const agentId = response.headers["x-agent-id"];
++		const logId = response?.headers?.["x-log-id"];
++		const agentId = response?.headers?.["x-agent-id"];
+ 		const args = [formatStr.replace("%s", retryAfter.toString())];
+ 		if (apiMessage) {
+ 			const serverMsg = SignAPIError.formatSignServerMessage(apiMessage);
+@@ -97,10 +97,10 @@ var SignatureRateLimitError = class SignatureRateLimitError extends SignAPIError
+ 		return value ? parseInt(value) : void 0;
+ 	}
+ 	static calculateRetryAfter(response) {
+-		return parseInt(response.headers["retry-after"] || "0") * 1e3;
++		return parseInt(response?.headers?.["retry-after"] || "0") * 1e3;
+ 	}
+ 	static calculateResetTime(response) {
+-		const value = response.headers["x-ratelimit-reset"];
++		const value = response?.headers?.["x-ratelimit-reset"];
+ 		return value ? parseInt(value) * 1e3 : void 0;
+ 	}
+ };
+@@ -913,7 +913,7 @@ const fetchSignedWebSocketFromEulerRoute = createRoute("fetchSignedWebSocketFrom
+ 	}
+ 	if (response.status === 429) {
+ 		const data = JSON.parse(Buffer.from(response.data).toString("utf-8"));
+-		throw new SignatureRateLimitError(process.env.SIGN_SERVER_MESSAGE_DISABLED ? null : data?.message, `${data?.limit_label ? `(${data.limit_label}) ` : ""}Too many connections started, try again later.`, response.data);
++		throw new SignatureRateLimitError(process.env.SIGN_SERVER_MESSAGE_DISABLED ? null : data?.message, `${data?.limit_label ? `(${data.limit_label}) ` : ""}Too many connections started, try again later.`, response);
+ 	}
+ 	if (response.status === 402) {
+ 		const data = JSON.parse(Buffer.from(response.data).toString("utf-8"));
